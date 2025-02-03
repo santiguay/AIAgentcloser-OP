@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos Pendientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        darker: '#0c1323',
+                        light: '#e2e8f0',
+                        accent: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark text-light">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4">Pedidos Pendientes</h1>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <h2 class="text-xl font-semibold mb-2">Lista de Pedidos</h2>
+                <div id="ordersList" class="space-y-2"></div>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold mb-2">Detalles del Pedido</h2>
+                <div id="orderDetails" class="bg-darker p-4 rounded-lg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fetchPendingOrders() {
+            fetch('/api/pending-orders/')
+                .then(response => response.json())
+                .then(orders => {
+                    const ordersList = document.getElementById('ordersList');
+                    ordersList.innerHTML = '';
+                    orders.forEach(order => {
+                        const orderElement = document.createElement('div');
+                        orderElement.className = 'bg-darker p-2 rounded-lg cursor-pointer hover:bg-accent';
+                        orderElement.innerHTML = `
+                            <p>Pedido #${order.id} - ${order.nombre_cliente}</p>
+                            <p>Total: $${order.total}</p>
+                        `;
+                        orderElement.onclick = () => fetchOrderDetails(order.id);
+                        ordersList.appendChild(orderElement);
+                    });
+                });
+        }
+
+        function fetchOrderDetails(orderId) {
+            fetch(`/api/orders/${orderId}/`)
+                .then(response => response.json())
+                .then(order => {
+                    const orderDetails = document.getElementById('orderDetails');
+                    orderDetails.innerHTML = `
+                        <h3 class="text-lg font-semibold mb-2">Pedido #${order.id}</h3>
+                        <p>Cliente: ${order.nombre_cliente}</p>
+                        <p>Dirección: ${order.domicilio}</p>
+                        <p>Teléfono: ${order.telefono}</p>
+                        <p>Total: $${order.total}</p>
+                        <h4 class="text-lg font-semibold mt-4 mb-2">Productos:</h4>
+                        <ul class="list-disc list-inside">
+                            ${order.detalles.map(detalle => `
+                                <li>${detalle.producto} - Cantidad: ${detalle.cantidad} - Subtotal: $${detalle.subtotal}</li>
+                            `).join('')}
+                        </ul>
+                        <button id="completeOrderBtn" class="mt-4 bg-accent text-white px-4 py-2 rounded hover:bg-purple-700">
+                            Marcar como Completado
+                        </button>
+                    `;
+                    document.getElementById('completeOrderBtn').onclick = () => completeOrder(orderId);
+                });
+        }
+
+        function completeOrder(orderId) {
+            fetch(`/api/complete-order/${orderId}/`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    fetchPendingOrders();
+                    document.getElementById('orderDetails').innerHTML = '';
+                });
+        }
+
+        fetchPendingOrders();
+    </script>
+</body>
+</html>
